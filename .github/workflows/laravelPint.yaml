@@ -1,0 +1,61 @@
+name: Laravel Code Linting
+on:
+  push:
+    branches: [ dev ]
+jobs:
+  lintingSuite:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: forge
+          MYSQL_DATABASE: forge
+          DB_HOST: 127.0.0.1
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      redis:
+        image: redis
+        ports:
+          - 6379/tcp
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    steps:
+      - uses: szenius/set-timezone@v1.0
+        with:
+          timezoneLinux: "America/Denver"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          coverage: none
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Copy ENV Laravel Configuration for CI
+        run: php -r "file_exists('.env') || copy('.env.ci', '.env');"
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "20"
+
+      - name: Install PHP Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
+
+      - name: "laravel-pint"
+        uses: aglipanci/laravel-pint-action@0.1.0
+        with:
+          preset: laravel
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: Automated coding standard style updates
+          title: Automated coding standard style updates
+          body: This is an auto-generated PR with code style fixes
+          token: ${{ secrets.TRUSTONLINE_ACTION_TOKEN }}
